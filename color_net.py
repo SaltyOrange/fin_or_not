@@ -23,20 +23,30 @@ def max_pool_2x2(x):
 
 
 def image_summary(tensor, img_height, img_width,
-                  img_channels, name, max_outputs):
+                  img_channels, name, max_outputs, rgb=False):
 
-    # Get the first image from this batch
-    summary_image = tf.slice(tensor, (0, 0, 0, 0), (1, -1, -1, -1),
-                             name='slice_first_input')
-    # Reshape into 3D tensor
-    summary_image = tf.reshape(summary_image,
-                               (img_height, img_width, img_channels))
+    if not rgb:
+        # Get the first image from this batch
+        summary_image = tf.slice(tensor, (0, 0, 0, 0), (1, -1, -1, -1),
+                                 name='slice_first_input')
 
-    # Reorder so the channels are in the first dimension, x and y follow
-    summary_image = tf.transpose(summary_image, (2, 0, 1))
-    # Bring into shape expected by image_summary
-    summary_image = tf.reshape(summary_image,
-                               (-1, img_height, img_width, 1))
+        # Reshape into 3D tensor
+        summary_image = tf.reshape(summary_image,
+                                   (img_height, img_width, img_channels))
+
+        # Reorder so the channels are in the first dimension, x and y follow
+        summary_image = tf.transpose(summary_image, (2, 0, 1))
+
+        # Bring into shape expected by image_summary
+        summary_image = tf.reshape(summary_image,
+                                   (-1, img_height, img_width, 1))
+    else:
+        # Reorder so the channels are in the first dimension, x and y follow
+        summary_image = tf.transpose(tensor, (3, 0, 1, 2))
+
+        # Bring into shape expected by image_summary
+        summary_image = tf.reshape(summary_image,
+                                   (-1, img_height, img_width, 3))
 
     # Add to summary
     tf.summary.image(name, summary_image, max_outputs)
@@ -53,13 +63,20 @@ def conv_max_pooling_layer(input, shape, name, max_summary_images=0):
 
         # Add images to summary
         if max_summary_images > 0:
-            image_summary(tf.transpose(W_conv, (2, 0, 1, 3)),
-                          shape[0], shape[1], shape[3],
-                          "%s_filters" % name, max_summary_images)
 
-            image_summary(h_conv, input.get_shape()[1].value,
-                          input.get_shape()[2].value,
-                          shape[3], name, max_summary_images)
+            if shape[2] == 3:
+                image_summary(tf.transpose(W_conv, (2, 0, 1, 3)),
+                              shape[0], shape[1], shape[3],
+                              "%s_filters" % name, max_summary_images, True)
+            else:
+                image_summary(tf.transpose(W_conv, (2, 0, 1, 3)),
+                              shape[0], shape[1], shape[3],
+                              "%s_filters" % name, max_summary_images)
+
+            image_summary(h_conv, h_conv.get_shape()[1].value,
+                          h_conv.get_shape()[2].value,
+                          h_conv.get_shape()[3].value,
+                          name, max_summary_images)
 
         # RELU operation
         h_conv = tf.nn.relu(h_conv + b_conv)
@@ -70,49 +87,22 @@ def conv_max_pooling_layer(input, shape, name, max_summary_images=0):
         return h_pool
 
 
-def get_classmap(label, conv3, name, batch_size=None):
-
-    conv3_resized = tf.image.resize_bilinear(conv3, [10, 10])
-
-    with tf.variable_scope("gap", reuse=True):
-        label_w = tf.gather(tf.transpose(tf.get_variable("W")), label)
-        label_w = tf.reshape(label_w, [64, 1])
-
-    # Unpack images to list
-    conv3_resized_unpacks = tf.unpack(conv3_resized, batch_size)
-
-    classmaps = []
-
-    for unpack in conv3_resized_unpacks:
-        unpack = tf.reshape(unpack, [10 * 10, 64])
-
-        classmap = tf.batch_matmul(unpack, label_w)
-        classmap = tf.reshape(classmap, [10, 10])
-        classmap = tf.expand_dims(classmap, axis=2)
-
-        classmaps.append(classmap)
-
-    pack = tf.pack(classmaps)
-
-    tf.summary.image("%s_classmap" % name, pack, batch_size)
-
-
-def net(iterations, ckpt_dir, ckpt_file, batch_size):
+def net(iterations, ckpt_dir, ckpt_file):
     sess = tf.InteractiveSession()
 
     with tf.name_scope("input"):
         # Inputs x -> image data, y_ -> label
-        x = tf.placeholder(tf.float32, [None, 80, 80, 1])
+        x = tf.placeholder(tf.float32, [None, 80, 80, 3])
         y_ = tf.placeholder(tf.float32, shape=[None, 2])
 
     # Reshape image data into 4D tensor
-    x_image = tf.reshape(x, [-1, 80, 80, 1])
+    x_image = tf.reshape(x, [-1, 80, 80, 3])
 
     # Add input images to summary
-    tf.summary.image('input', x_image, max_outputs=batch_size)
+    tf.summary.image('input', x_image, max_outputs=4)
 
     # First convolution and pooling (5x5 kernel, 16 filters)
-    conv1_pool = conv_max_pooling_layer(x_image, [5, 5, 1, 16],
+    conv1_pool = conv_max_pooling_layer(x_image, [5, 5, 3, 16],
                                         "conv1", 16)
 
     # Second convolution and pooling (5x5 kernel, 32 filters)
@@ -123,28 +113,13 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     conv3_pool = conv_max_pooling_layer(conv2_pool, [5, 5, 32, 64],
                                         "conv3", 64)
 
-    gap = tf.reduce_mean(conv3_pool, [1, 2])
-
-    with tf.variable_scope("gap"):
-        gap_w = tf.get_variable(
-            "W",
-            shape=[64, 2],
-            initializer=tf.random_normal_initializer(0., 0.01)
-        )
-
-    y = tf.matmul(gap, gap_w)
-
-    get_classmap(0, conv3_pool, "fin", batch_size)
-    get_classmap(1, conv3_pool, "no_fin", batch_size)
-
-    """
     with tf.name_scope("fully_connected"):
         # Flatten convolution for fully connected layer
         conv3_pool_flat = tf.reshape(conv3_pool, [-1, 10 * 10 * 64])
 
         # Fully connected layer weight and bias variables
-        w_fullyconn = weight_variable([10 * 10 * 64, 512])
-        b_fullyconn = bias_variable([512])
+        w_fullyconn = weight_variable([10 * 10 * 64, 1024])
+        b_fullyconn = bias_variable([1024])
 
         # Fully connected layer
         fully_connected = tf.nn.relu(
@@ -155,10 +130,9 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     with tf.name_scope("readout"):
         # Readout layer, map to output classes
-        w_readout = weight_variable([512, 2])
+        w_readout = weight_variable([1024, 2])
         b_readout = bias_variable([2])
         y = tf.matmul(dropout, w_readout) + b_readout
-    """
 
     with tf.name_scope("accuracy"):
         # Accuracy measure
@@ -186,8 +160,8 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\training\\",
-        batch_size=batch_size,
+        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\color_training\\",
+        batch_size=100,
         image_names=False
     )
 
@@ -209,6 +183,8 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     cma = 0
     n = 0
 
+    # TODO: Add accuracy based on test data every 10-th step
+
     for i in range(iterations):
         # Get next batch of images and labels
         batch = data_reader.next()
@@ -227,20 +203,27 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
             cma += (train_accuracy - cma) / n
             print("Cumulative moving average: %f" % cma)
 
-            # Generate summary
             summary = sess.run(
                 merged, feed_dict={x: batch[0], y_: batch[1]}
             )
+            writer.add_summary(summary, i)
 
+        if i % 100 == 0:
             run_options = tf.RunOptions(
                 trace_level=tf.RunOptions.FULL_TRACE)
             run_metadata = tf.RunMetadata()
+
+            # Generate summary
+            summary = sess.run(
+                merged, feed_dict={x: batch[0], y_: batch[1]},
+                options=run_options,
+                run_metadata=run_metadata
+            )
 
             writer.add_run_metadata(run_metadata, 'step%03d' % i)
             writer.add_summary(summary, i)
             print('Adding run metadata for', i)
 
-        if i % 100 == 0:
             # Save the variables to disk
             save_path = saver.save(sess, ckpt_dir + ckpt_file)
             print("Model saved in file: %s" % save_path)
@@ -251,10 +234,12 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     save_path = saver.save(sess, ckpt_dir + ckpt_file)
     print("Model saved in file: %s" % save_path)
 
+    writer.close()
+
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\testing\\",
-        batch_size=1,
+        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\color_testing\\",
+        batch_size=2,
         image_names=True
     )
 
@@ -274,8 +259,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
         print("Testing step %d, testing accuracy %g" % (i, test_accuracy))
 
 net(
-    3000,
+    1500,
     "D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\",
-    "model.ckpt",
-    20
+    "model.ckpt"
 )

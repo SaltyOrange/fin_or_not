@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 # TODO: Add data augmentations
-
+# TODO: Shuffle data
 class DataReader:
     # 0 -> no fin, 1 -> fin
     CLASSES = {0: [0, 1], 1: [1, 0]}
@@ -20,7 +20,10 @@ class DataReader:
             image_array = np.asarray(image)
 
             # image_array = np.expand_dims(image_array, axis=0)
-            image_array = np.expand_dims(image_array, axis=3)
+            # image_array = np.expand_dims(image_array, axis=3)
+
+            # TODO: Add support for rgb and grayscale images
+
             if "no_fin" in item:
                 class_id = 0
             else:

@@ -42,7 +42,7 @@ def image_summary(tensor, img_height, img_width,
     tf.summary.image(name, summary_image, max_outputs)
 
 
-def conv_max_pooling_layer(input, shape, name, max_summary_images=0):
+def conv_layer(input, shape, name, max_summary_images=0):
     with tf.name_scope(name):
         # Initialize variables
         W_conv = weight_variable(shape)
@@ -64,19 +64,26 @@ def conv_max_pooling_layer(input, shape, name, max_summary_images=0):
         # RELU operation
         h_conv = tf.nn.relu(h_conv + b_conv)
 
+        return h_conv
+
+
+def conv_max_pooling_layer(input, shape, name, max_summary_images=0):
+    with tf.name_scope(name):
+        h_conv = conv_layer(input, shape, name + "_conv", max_summary_images)
+
         # Pooling
         h_pool = max_pool_2x2(h_conv)
 
         return h_pool
 
 
-def get_classmap(label, conv3, name, batch_size=None):
+def get_classmap(label, conv3, name, batch_size=1):
 
-    conv3_resized = tf.image.resize_bilinear(conv3, [10, 10])
+    conv3_resized = tf.image.resize_bilinear(conv3, [64, 64])
 
     with tf.variable_scope("gap", reuse=True):
         label_w = tf.gather(tf.transpose(tf.get_variable("W")), label)
-        label_w = tf.reshape(label_w, [64, 1])
+        label_w = tf.reshape(label_w, [512, 1])
 
     # Unpack images to list
     conv3_resized_unpacks = tf.unpack(conv3_resized, batch_size)
@@ -84,10 +91,10 @@ def get_classmap(label, conv3, name, batch_size=None):
     classmaps = []
 
     for unpack in conv3_resized_unpacks:
-        unpack = tf.reshape(unpack, [10 * 10, 64])
+        unpack = tf.reshape(unpack, [64 * 64, 512])
 
-        classmap = tf.batch_matmul(unpack, label_w)
-        classmap = tf.reshape(classmap, [10, 10])
+        classmap = tf.matmul(unpack, label_w)
+        classmap = tf.reshape(classmap, [64, 64])
         classmap = tf.expand_dims(classmap, axis=2)
 
         classmaps.append(classmap)
@@ -102,33 +109,39 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     with tf.name_scope("input"):
         # Inputs x -> image data, y_ -> label
-        x = tf.placeholder(tf.float32, [None, 80, 80, 1])
+        x = tf.placeholder(tf.float32, [None, 512, 512, 3])
         y_ = tf.placeholder(tf.float32, shape=[None, 2])
 
     # Reshape image data into 4D tensor
-    x_image = tf.reshape(x, [-1, 80, 80, 1])
+    x_image = tf.reshape(x, [-1, 512, 512, 3])
 
     # Add input images to summary
     tf.summary.image('input', x_image, max_outputs=batch_size)
 
-    # First convolution and pooling (5x5 kernel, 16 filters)
-    conv1_pool = conv_max_pooling_layer(x_image, [5, 5, 1, 16],
-                                        "conv1", 16)
+    conv1_1 = conv_layer(x_image, [5, 5, 3, 32], "conv1_1")
+    conv1_2 = conv_layer(conv1_1, [5, 5, 32, 64], "conv1_2")
 
-    # Second convolution and pooling (5x5 kernel, 32 filters)
-    conv2_pool = conv_max_pooling_layer(conv1_pool, [5, 5, 16, 32],
-                                        "conv2", 32)
+    # First convolution and pooling (5x5 kernel, 128 filters)
+    conv1_pool = conv_max_pooling_layer(conv1_2, [5, 5, 64, 128], "conv1")
 
-    # Third convolution and pooling (5x5 kernel, 64 filters)
-    conv3_pool = conv_max_pooling_layer(conv2_pool, [5, 5, 32, 64],
-                                        "conv3", 64)
+    conv2_1 = conv_layer(conv1_pool, [5, 5, 128, 160], "conv2_1")
+    conv2_2 = conv_layer(conv2_1, [5, 5, 160, 192], "conv2_2")
+
+    # Second convolution and pooling (5x5 kernel, 256 filters)
+    conv2_pool = conv_max_pooling_layer(conv2_2, [5, 5, 192, 256], "conv2")
+
+    conv3_1 = conv_layer(conv2_pool, [5, 5, 256, 320], "conv3_1")
+    conv3_2 = conv_layer(conv3_1, [5, 5, 160, 384], "conv3_2")
+
+    # Third convolution and pooling (5x5 kernel, 512 filters)
+    conv3_pool = conv_max_pooling_layer(conv3_2, [5, 5, 384, 512], "conv3")
 
     gap = tf.reduce_mean(conv3_pool, [1, 2])
 
     with tf.variable_scope("gap"):
         gap_w = tf.get_variable(
             "W",
-            shape=[64, 2],
+            shape=[512, 2],
             initializer=tf.random_normal_initializer(0., 0.01)
         )
 
@@ -175,7 +188,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
         tf.summary.scalar('cross_entropy', cross_entropy)
 
         # Training step optimizer
-        train_step = tf.train.AdamOptimizer(0.001).minimize(cross_entropy)
+        train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
 
     # Setup summary
     merged = tf.summary.merge_all()
@@ -186,7 +199,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\training\\",
+        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\weakly_color\\",
         batch_size=batch_size,
         image_names=False
     )
@@ -196,6 +209,9 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     tf.add_to_collection('x', x)
     tf.add_to_collection('y', y)
+
+    tf.add_to_collection('gap_w', gap_w)
+    tf.add_to_collection('conv3', conv3_pool)
 
     ckpt = tf.train.latest_checkpoint(ckpt_dir)
     if ckpt:
@@ -253,7 +269,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\testing\\",
+        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\weakly_color\\",
         batch_size=1,
         image_names=True
     )
@@ -277,5 +293,5 @@ net(
     3000,
     "D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\",
     "model.ckpt",
-    20
+    1
 )
