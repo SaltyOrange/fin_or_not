@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/fin_or_not/model.ckpt"
+all_model_checkpoint_paths: "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/fin_or_not/model.ckpt"

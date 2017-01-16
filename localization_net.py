@@ -48,6 +48,9 @@ def conv_layer(input, shape, name, max_summary_images=0):
         W_conv = weight_variable(shape)
         b_conv = bias_variable([shape[3]])
 
+        l2_loss = tf.nn.l2_loss(W_conv)
+        tf.add_to_collection('l2_losses', l2_loss)
+
         # Make convolutional operation
         h_conv = conv2d(input, W_conv)
 
@@ -83,7 +86,7 @@ def get_classmap(label, conv3, name, batch_size=1):
 
     with tf.variable_scope("gap", reuse=True):
         label_w = tf.gather(tf.transpose(tf.get_variable("W")), label)
-        label_w = tf.reshape(label_w, [512, 1])
+        label_w = tf.reshape(label_w, [128, 1])
 
     # Unpack images to list
     conv3_resized_unpacks = tf.unpack(conv3_resized, batch_size)
@@ -91,7 +94,7 @@ def get_classmap(label, conv3, name, batch_size=1):
     classmaps = []
 
     for unpack in conv3_resized_unpacks:
-        unpack = tf.reshape(unpack, [64 * 64, 512])
+        unpack = tf.reshape(unpack, [64 * 64, 128])
 
         classmap = tf.matmul(unpack, label_w)
         classmap = tf.reshape(classmap, [64, 64])
@@ -105,7 +108,10 @@ def get_classmap(label, conv3, name, batch_size=1):
 
 
 def net(iterations, ckpt_dir, ckpt_file, batch_size):
-    sess = tf.InteractiveSession()
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.8
+
+    sess = tf.InteractiveSession(config=config)
 
     with tf.name_scope("input"):
         # Inputs x -> image data, y_ -> label
@@ -118,30 +124,30 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     # Add input images to summary
     tf.summary.image('input', x_image, max_outputs=batch_size)
 
-    conv1_1 = conv_layer(x_image, [5, 5, 3, 32], "conv1_1")
-    conv1_2 = conv_layer(conv1_1, [5, 5, 32, 64], "conv1_2")
+    conv1_1 = conv_layer(x_image, [3, 3, 3, 16], "conv1_1")
+    conv1_2 = conv_layer(conv1_1, [3, 3, 16, 16], "conv1_2")
 
     # First convolution and pooling (5x5 kernel, 128 filters)
-    conv1_pool = conv_max_pooling_layer(conv1_2, [5, 5, 64, 128], "conv1")
+    conv1_pool = conv_max_pooling_layer(conv1_2, [3, 3, 16, 32], "conv1")
 
-    conv2_1 = conv_layer(conv1_pool, [5, 5, 128, 160], "conv2_1")
-    conv2_2 = conv_layer(conv2_1, [5, 5, 160, 192], "conv2_2")
+    conv2_1 = conv_layer(conv1_pool, [3, 3, 32, 32], "conv2_1")
+    conv2_2 = conv_layer(conv2_1, [3, 3, 32, 32], "conv2_2")
 
     # Second convolution and pooling (5x5 kernel, 256 filters)
-    conv2_pool = conv_max_pooling_layer(conv2_2, [5, 5, 192, 256], "conv2")
+    conv2_pool = conv_max_pooling_layer(conv2_2, [3, 3, 32, 64], "conv2")
 
-    conv3_1 = conv_layer(conv2_pool, [5, 5, 256, 320], "conv3_1")
-    conv3_2 = conv_layer(conv3_1, [5, 5, 160, 384], "conv3_2")
+    conv3_1 = conv_layer(conv2_pool, [3, 3, 64,64], "conv3_1")
+    conv3_2 = conv_layer(conv3_1, [3, 3, 64, 64], "conv3_2")
 
     # Third convolution and pooling (5x5 kernel, 512 filters)
-    conv3_pool = conv_max_pooling_layer(conv3_2, [5, 5, 384, 512], "conv3")
-
+    conv3_pool = conv_max_pooling_layer(conv3_2, [3, 3, 64, 128], "conv3")
+    
     gap = tf.reduce_mean(conv3_pool, [1, 2])
 
     with tf.variable_scope("gap"):
         gap_w = tf.get_variable(
             "W",
-            shape=[512, 2],
+            shape=[128, 2],
             initializer=tf.random_normal_initializer(0., 0.01)
         )
 
@@ -153,11 +159,11 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     """
     with tf.name_scope("fully_connected"):
         # Flatten convolution for fully connected layer
-        conv3_pool_flat = tf.reshape(conv3_pool, [-1, 10 * 10 * 64])
+        conv3_pool_flat = tf.reshape(conv3_pool, [-1, 64 * 64 * 128])
 
         # Fully connected layer weight and bias variables
-        w_fullyconn = weight_variable([10 * 10 * 64, 512])
-        b_fullyconn = bias_variable([512])
+        w_fullyconn = weight_variable([64 * 64 * 128, 128])
+        b_fullyconn = bias_variable([128])
 
         # Fully connected layer
         fully_connected = tf.nn.relu(
@@ -168,11 +174,11 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     with tf.name_scope("readout"):
         # Readout layer, map to output classes
-        w_readout = weight_variable([512, 2])
+        w_readout = weight_variable([128, 2])
         b_readout = bias_variable([2])
         y = tf.matmul(dropout, w_readout) + b_readout
+    
     """
-
     with tf.name_scope("accuracy"):
         # Accuracy measure
         correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
@@ -185,21 +191,24 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
         cross_entropy = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(y, y_))
 
-        tf.summary.scalar('cross_entropy', cross_entropy)
+        weight_decay_constant = 0.0005
+        loss = cross_entropy + tf.add_n(tf.get_collection("l2_losses")) * weight_decay_constant 
+
+        tf.summary.scalar('loss', loss)
 
         # Training step optimizer
-        train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+        train_step = tf.train.AdamOptimizer(0.0004).minimize(loss)
 
     # Setup summary
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\tensorflow_log",
+        "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/fin_or_not/tensorflow_log",
         sess.graph
     )
 
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\weakly_color\\",
+        "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/weakly_color/",
         batch_size=batch_size,
         image_names=False
     )
@@ -252,7 +261,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
                 trace_level=tf.RunOptions.FULL_TRACE)
             run_metadata = tf.RunMetadata()
 
-            writer.add_run_metadata(run_metadata, 'step%03d' % i)
+            writer.add_run_metadata(run_metadata, 'step%05d' % i)
             writer.add_summary(summary, i)
             print('Adding run metadata for', i)
 
@@ -269,7 +278,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
 
     # Get data reader
     data_reader = DataReader(
-        "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\weakly_color\\",
+        "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/weakly_color/",
         batch_size=1,
         image_names=True
     )
@@ -290,8 +299,8 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
         print("Testing step %d, testing accuracy %g" % (i, test_accuracy))
 
 net(
-    3000,
-    "D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\",
+    10000,
+    "/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/fin_or_not/",
     "model.ckpt",
     1
 )

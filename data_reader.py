@@ -34,6 +34,9 @@ class DataReader:
                                          self.CLASSES[class_id], item))
             else:
                 self.data_arrays.append((image_array, self.CLASSES[class_id]))
+        
+        np.random.shuffle(self.data_arrays)
+
 
     def next(self):
         batch = []
