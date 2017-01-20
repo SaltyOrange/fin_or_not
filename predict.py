@@ -6,7 +6,7 @@ from PIL import Image
 
 def files_in_directory(directory, allowed_extensions):
     import os
-    print 'Reading all files in directory:', directory
+    #print 'Reading all files in directory:', directory
     
     for file_or_dir in os.listdir(directory):
         full_path_to_file_or_dir = os.path.join(directory, file_or_dir)
@@ -35,8 +35,10 @@ def get_classmap(label, conv3, w):
 def get_session(model_dir, model_meta):
     sess = tf.InteractiveSession()
     saver = tf.train.import_meta_graph(model_dir + model_meta)
+    #print(saver.last_checkpoints)
 
-    ckpt = tf.train.latest_checkpoint(model_dir)
+    # ckpt = tf.train.latest_checkpoint(model_dir)
+    ckpt = model_dir + "model.ckpt"
     if ckpt:
         saver.restore(sess, ckpt)
         print("Model loaded from file: %s" % ckpt)
@@ -53,7 +55,7 @@ def get_session(model_dir, model_meta):
     return sess, x, y, conv3, w
 
 def predict(image_path, sess):
-    print "Opening image", image_path
+    #print "Opening image", image_path
     image = Image.open(image_path)
     image = image.resize((512, 512), Image.ANTIALIAS)
 
@@ -67,21 +69,34 @@ def predict(image_path, sess):
     image_contains_fin_prediction = (prediction == [0])
     image_really_contains_fin = image_path.split('/')[-1].startswith('no_fin') == False
 
-    print "Image\n\t", image_path, "\n\tcontains fin?\n\t", image_contains_fin_prediction
+    #print "Image\n\t", image_path, "\n\tcontains fin?\n\t", image_contains_fin_prediction
     is_this_good = image_contains_fin_prediction == image_really_contains_fin
-    print "Is this good ?", is_this_good
-    
-    classmap_image = Image.fromarray(get_classmap(0, conv3_array, w_array).eval())
+    #print "Is this good ?", is_this_good
+
+    classmap_image = Image.fromarray(
+        get_classmap(0, conv3_array, w_array).eval())
 
     classmap_image = classmap_image.resize(image.size)
     classmap_image = classmap_image.convert(mode="RGBA")
 
-
     if image_really_contains_fin:
         image = image.convert(mode="RGBA")
         image = Image.blend(image, classmap_image, 0.5)
-        image.save("/home/student/Desktop/tmp.jpg")
-        raw_input('Press enter boyyy')
+
+        """
+        for i in range(conv3_array.shape[3]):
+            arr_max = conv3_array[0, :, :, i].max()
+            if arr_max > 128:
+                tmp_arr = (conv3_array[0, :, :, i]/conv3_array[0, :, :, i].max())*255
+
+                tmp = Image.fromarray(tmp_arr)
+                print(tmp_arr)
+                tmp.show()
+        """
+
+        image.show()
+        #image.save("/home/student/Desktop/tmp.jpg")
+        input('Press enter boyyy')
 
     """
     if not is_this_good:
@@ -92,7 +107,7 @@ def predict(image_path, sess):
 image_directory = sys.argv[1]
 
 
-session, x, y, conv3, w = get_session("/home/student/Desktop/fin_localization/neural_net_fin_or_not/weakly_localization/fin_or_not/", "model.ckpt.meta")
+session, x, y, conv3, w = get_session("D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\", "model.ckpt.meta")
 
 for image_path in files_in_directory(image_directory, "jpg"):
     predict(image_path, session)

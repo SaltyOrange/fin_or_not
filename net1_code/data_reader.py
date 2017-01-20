@@ -9,8 +9,6 @@ class DataReader:
     # 0 -> no fin, 1 -> fin
     CLASSES = {0: [0, 1], 1: [1, 0]}
 
-    data_count = 0
-
     def __init__(self, data_dir, batch_size=1, file_names=False):
         self.data_arrays = []
         self.current = 0
@@ -35,8 +33,6 @@ class DataReader:
                                          self.CLASSES[class_id], item))
             else:
                 self.data_arrays.append((image_array, self.CLASSES[class_id]))
-
-        self.data_count = len(self.data_arrays)
         
         np.random.shuffle(self.data_arrays)
 

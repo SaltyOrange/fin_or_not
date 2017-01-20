@@ -188,7 +188,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     data_reader = DataReader(
         "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\training\\",
         batch_size=batch_size,
-        image_names=False
+        file_names=False
     )
 
     # Add ops to save and restore all the variables
@@ -255,7 +255,7 @@ def net(iterations, ckpt_dir, ckpt_file, batch_size):
     data_reader = DataReader(
         "D:\\Stuff\\Faks\\BIOINF\\Projekt\\localization_data\\testing\\",
         batch_size=1,
-        image_names=True
+        file_names=True
     )
 
     for i in range(30):
