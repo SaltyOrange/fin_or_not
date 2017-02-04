@@ -1,7 +1,7 @@
 import sys
 
-from predict import Predictor
-from utils import files_in_directory
+from ..predict import Predictor
+from ..utils import files_in_directory
 
 if len(sys.argv) < 4:
     sys.exit("Usage: script.py model_dir image_load_dir "

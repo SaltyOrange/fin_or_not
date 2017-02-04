@@ -22,7 +22,7 @@ class DataReader:
             if len(image_array.shape) == 2:
                 image_array = np.expand_dims(image_array, axis=2)
 
-            # TODO: Generic class logic
+            # TODO: Generic class determination logic
             if "no_fin" in item:
                 class_id = 0
             else:

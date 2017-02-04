@@ -1,6 +1,7 @@
 import sys
 
 import cv2
+import numpy
 
 from predict import Predictor
 from utils import get_blob_bounding_boxes
@@ -19,7 +20,8 @@ image_path = sys.argv[2]
 prediction, images = \
     predictor.predict(image_path, return_type=1)
 
-classmap = images[0]
+classmap = images[0].convert("L")
+classmap = numpy.array(classmap)
 
 # Get bounding boxes for blobs in classmap
 bounding_boxes = get_blob_bounding_boxes(classmap)

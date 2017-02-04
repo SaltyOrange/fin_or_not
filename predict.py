@@ -68,7 +68,7 @@ class Predictor:
         prediction = tf.argmax(prediction, 1).eval()
 
         classmap_image = Image.fromarray(
-            self.get_classmap(0, conv3_array, w_array).eval()).convert("RGB")
+            self.get_classmap(0, conv3_array, w_array).eval())
 
         return_list = []
 
@@ -82,6 +82,7 @@ class Predictor:
             return_list.append(image)
 
         if return_type == 1 or return_type == 2:
+            classmap_image = classmap_image.convert("RGB")
             return_list.append(classmap_image)
 
         return prediction, return_list
