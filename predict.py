@@ -4,9 +4,10 @@ import sys
 
 from PIL import Image
 
+
 def files_in_directory(directory, allowed_extensions):
     import os
-    #print 'Reading all files in directory:', directory
+    # print 'Reading all files in directory:', directory
     
     for file_or_dir in os.listdir(directory):
         full_path_to_file_or_dir = os.path.join(directory, file_or_dir)
@@ -32,10 +33,11 @@ def get_classmap(label, conv3, w):
 
     return classmap
 
-def get_session(model_dir, model_meta):
+
+def get_session(model_dir):
     sess = tf.InteractiveSession()
-    saver = tf.train.import_meta_graph(model_dir + model_meta)
-    #print(saver.last_checkpoints)
+    saver = tf.train.import_meta_graph(model_dir + "model.ckpt")
+    # print(saver.last_checkpoints)
 
     # ckpt = tf.train.latest_checkpoint(model_dir)
     ckpt = model_dir + "model.ckpt"
@@ -54,8 +56,19 @@ def get_session(model_dir, model_meta):
 
     return sess, x, y, conv3, w
 
-def predict(image_path, sess):
-    #print "Opening image", image_path
+
+def predict(image_path, sess, image_save_dir, image_save_name, save_type=0):
+    """
+    Predicts class for given image ans saves selected images
+    (classmap, blended classmap and image or both)
+    :param image_path: input image
+    :param sess: tensorflow session used for prediction
+    :param image_save_dir: for image saving
+    :param image_save_name: for image saving
+    :param save_type: what to save (blend, classmap or both) (0, 1, 2)
+    """
+
+    # print "Opening image", image_path
     image = Image.open(image_path)
     image = image.resize((512, 512), Image.ANTIALIAS)
 
@@ -63,51 +76,34 @@ def predict(image_path, sess):
     image_array = np.expand_dims(image_array, axis=0)
     # image_array = np.expand_dims(image_array, axis=3)
 
-    prediction, conv3_array, w_array = sess.run([y, conv3, w], feed_dict={x: image_array})
+    prediction, conv3_array, w_array = sess.run([y, conv3, w],
+                                                feed_dict={x: image_array})
     prediction = tf.argmax(prediction, 1).eval()
-
-    image_contains_fin_prediction = (prediction == [0])
-    image_really_contains_fin = image_path.split('/')[-1].startswith('no_fin') == False
-
-    #print "Image\n\t", image_path, "\n\tcontains fin?\n\t", image_contains_fin_prediction
-    is_this_good = image_contains_fin_prediction == image_really_contains_fin
-    #print "Is this good ?", is_this_good
 
     classmap_image = Image.fromarray(
         get_classmap(0, conv3_array, w_array).eval())
 
-    classmap_image = classmap_image.resize(image.size)
-    classmap_image = classmap_image.convert(mode="RGBA")
+    if save_type == 1 or save_type == 2:
+        classmap_image.save("%s/%s_class_%s_classmap.jpg" %
+                            (image_save_dir, image_save_name, str(prediction)))
 
-    if image_really_contains_fin:
+    if save_type == 0 or save_type == 2:
+        classmap_image = classmap_image.resize(image.size)
+        classmap_image = classmap_image.convert(mode="RGBA")
+
         image = image.convert(mode="RGBA")
         image = Image.blend(image, classmap_image, 0.5)
 
-        """
-        for i in range(conv3_array.shape[3]):
-            arr_max = conv3_array[0, :, :, i].max()
-            if arr_max > 128:
-                tmp_arr = (conv3_array[0, :, :, i]/conv3_array[0, :, :, i].max())*255
-
-                tmp = Image.fromarray(tmp_arr)
-                print(tmp_arr)
-                tmp.show()
-        """
-
-        image.show()
-        #image.save("/home/student/Desktop/tmp.jpg")
-        input('Press enter boyyy')
-
-    """
-    if not is_this_good:
-        image.save("/home/student/Desktop/tmp.jpg")
-        raw_input('Press enter boyyy')
-    """
-
-image_directory = sys.argv[1]
+        image.save("%s/%s_class_%s_blend.jpg" %
+                   (image_save_dir, image_save_name, str(prediction)))
 
 
-session, x, y, conv3, w = get_session("D:\\Stuff\\Faks\\BIOINF\\Projekt\\fin_or_not\\", "model.ckpt.meta")
+if len(sys.argv) < 4:
+    sys.exit("Usage: script.py model_dir image_load_dir image_save_dir")
 
-for image_path in files_in_directory(image_directory, "jpg"):
-    predict(image_path, session)
+session, x, y, conv3, w = get_session(sys.argv[1])
+
+image_directory = sys.argv[2]
+
+for i, image_path in enumerate(files_in_directory(image_directory, "jpg")):
+    predict(image_path, session, sys.argv[3], str(i), save_type=1)
