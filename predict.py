@@ -36,7 +36,7 @@ def get_classmap(label, conv3, w):
 
 def get_session(model_dir):
     sess = tf.InteractiveSession()
-    saver = tf.train.import_meta_graph(model_dir + "model.ckpt")
+    saver = tf.train.import_meta_graph(model_dir + "model.ckpt.meta")
     # print(saver.last_checkpoints)
 
     # ckpt = tf.train.latest_checkpoint(model_dir)
@@ -81,7 +81,7 @@ def predict(image_path, sess, image_save_dir, image_save_name, save_type=0):
     prediction = tf.argmax(prediction, 1).eval()
 
     classmap_image = Image.fromarray(
-        get_classmap(0, conv3_array, w_array).eval())
+        get_classmap(0, conv3_array, w_array).eval()).convert("RGB")
 
     if save_type == 1 or save_type == 2:
         classmap_image.save("%s/%s_class_%s_classmap.jpg" %
