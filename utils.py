@@ -24,7 +24,9 @@ def get_blob_bounding_boxes(input_image):
 
     # Normalize image to values between 0 and 255
     image = input_image - input_image.min()
-    image *= 255.0 / image.max()
+    # Not a shorthand operator because
+    # https://github.com/numpy/numpy/issues/7225
+    image = image * 255.0 / image.max()
     image = image.astype('uint8')
 
     # Given threshold value is ignored,

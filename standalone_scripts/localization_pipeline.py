@@ -29,8 +29,8 @@ bounding_boxes = get_blob_bounding_boxes(classmap)
 # Translate bounding boxes into original picture coordinate system
 original_image = cv2.imread(image_path)
 
-classmap_width, classmap_height = classmap.size
-original_image_width, original_image_height = original_image.size
+classmap_width, classmap_height = classmap.shape
+original_image_width, original_image_height = original_image.shape
 width_ratio = original_image_width/classmap_width
 height_ratio = original_image_height/classmap_height
 
