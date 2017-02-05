@@ -14,7 +14,7 @@ logfile = sys.argv[5]
 
 ckpt_file = "ckpt"
 
-x, y_true, y, train_step, accuracy = inference(batch_size)
+x, y_true, y, train_step, accuracy = inference()
 
 sess = tf.InteractiveSession()
 

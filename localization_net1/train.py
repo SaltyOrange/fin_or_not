@@ -1,5 +1,5 @@
 from utils import DataReader
-from classification_net.net import inference
+from localization_net1.net import inference
 
 import tensorflow as tf
 
@@ -14,7 +14,7 @@ logfile = sys.argv[5]
 
 ckpt_file = "ckpt"
 
-x, y_true, y, gap_w, conv3_pool, train_step, accuracy = inference()
+x, y_true, y, gap_w, conv3_pool, train_step, accuracy = inference(batch_size)
 
 sess = tf.InteractiveSession()
 
