@@ -1,5 +1,5 @@
 from utils import DataReader
-from localization_net1.net import inference
+from classification_net.net import inference
 
 import tensorflow as tf
 
