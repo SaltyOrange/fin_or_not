@@ -8,8 +8,8 @@ import sys
 
 train_dataset_dir = sys.argv[1]
 test_dataset_dir = sys.argv[2]
-iterations = sys.argv[3]
-batch_size = sys.argv[4]
+iterations = int(sys.argv[3])
+batch_size = int(sys.argv[4])
 logfile = sys.argv[5]
 
 ckpt_file = "ckpt"
