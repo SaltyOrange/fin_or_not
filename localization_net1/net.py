@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-from data_reader import DataReader
-
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)

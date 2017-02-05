@@ -1,6 +1,6 @@
 import sys
 
-from ..predict import Predictor
+from localization_net1.predict import Predictor
 from ..utils import files_in_directory
 
 if len(sys.argv) < 4:

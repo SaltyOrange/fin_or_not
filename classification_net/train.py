@@ -1,5 +1,5 @@
-from net1_code.data_reader import DataReader
-from net1_code.net import inference
+from utils import DataReader
+from localization_net1.net import inference
 
 import tensorflow as tf
 
@@ -14,7 +14,7 @@ logfile = sys.argv[5]
 
 ckpt_file = "ckpt"
 
-x, y_true, y, gap_w, conv3_pool, train_step, accuracy = inference(batch_size)
+x, y_true, y, train_step, accuracy = inference(batch_size)
 
 sess = tf.InteractiveSession()
 
@@ -31,9 +31,6 @@ saver = tf.train.Saver()
 
 tf.add_to_collection('x', x)
 tf.add_to_collection('y', y)
-
-tf.add_to_collection('gap_w', gap_w)
-tf.add_to_collection('conv3', conv3_pool)
 
 ckpt = tf.train.latest_checkpoint(".")
 if ckpt:
