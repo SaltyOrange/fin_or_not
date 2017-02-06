@@ -40,8 +40,8 @@ class Predictor:
         conv3_resized = tf.image.resize_bilinear(conv3, [64, 64])
 
         label_w = tf.gather(tf.transpose(w), label)
-        label_w = tf.reshape(label_w, [128, 1])
-        conv3_resized = tf.reshape(conv3_resized, [64 * 64, 128])
+        label_w = tf.reshape(label_w, [64, 1])
+        conv3_resized = tf.reshape(conv3_resized, [64 * 64, 64])
 
         classmap = tf.matmul(conv3_resized, label_w)
         classmap = tf.reshape(classmap, [64, 64])
