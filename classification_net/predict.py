@@ -10,8 +10,11 @@ class Predictor:
         self.session, self.x, self.y = \
             self.get_session(model_dir)
 
+    def close_session(self):
+        self.session.close()
+
     def get_session(self, model_dir):
-        sess = tf.InteractiveSession()
+        sess = tf.Session()
         saver = tf.train.import_meta_graph(model_dir + "ckpt.meta")
         # print(saver.last_checkpoints)
 

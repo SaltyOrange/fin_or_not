@@ -9,20 +9,19 @@ from classification_net.predict import Predictor as ClassificationPredictor
 from utils import get_blob_bounding_boxes
 
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
     sys.exit("Usage: script.py localization_model_dir classification_model_dir"
              " image_path")
 
-# Get predictors
-localization_predictor = LocalizationPredictor(sys.argv[1])
-classification_predictor = ClassificationPredictor(sys.argv[2])
+# Get localization predictor
+predictor = LocalizationPredictor(sys.argv[1])
 
 # Get image path
 image_path = sys.argv[3]
 
 # Get prediction and classmap for image
 prediction, images = \
-    localization_predictor.predict(image_path, return_type=1)
+    predictor.predict(image_path, return_type=1)
 
 classmap = images[0].convert("L")
 classmap = numpy.array(classmap)
@@ -46,8 +45,12 @@ for box in bounding_boxes:
     y *= height_ratio
     h *= height_ratio
 
+    # Get classification predictor
+    predictor.close_session()
+    predictor = ClassificationPredictor(sys.argv[2])
+
     # Check if really a fin using CNN
-    prediction = classification_predictor.predict(
+    prediction = predictor.predict(
         Image.fromarray(original_image[y-1:y+h-1, x-1:x+h-1, :]))
 
     # If it really is a fin draw a rectange
