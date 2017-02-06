@@ -171,4 +171,4 @@ def inference(batch_size):
         # Training step optimizer
         train_step = tf.train.AdamOptimizer(0.0004).minimize(loss)
 
-    return x, y_true, y, train_step, accuracy
+    return x, y_true, y, gap_w, conv3_pool, train_step, accuracy
