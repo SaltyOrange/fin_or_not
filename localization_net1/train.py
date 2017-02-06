@@ -6,11 +6,16 @@ import tensorflow as tf
 import sys
 
 
+if len(sys.argv) < 7:
+    sys.exit("Usage: script.py train_dataset_dir test_dataset_dir iterations"
+             " batch_size model_path logfile")
+
 train_dataset_dir = sys.argv[1]
 test_dataset_dir = sys.argv[2]
 iterations = int(sys.argv[3])
 batch_size = int(sys.argv[4])
-logfile = sys.argv[5]
+model_path = sys.argv[5]
+logfile = sys.argv[6]
 
 ckpt_file = "ckpt"
 
@@ -35,7 +40,7 @@ tf.add_to_collection('y', y)
 tf.add_to_collection('gap_w', gap_w)
 tf.add_to_collection('conv3', conv3_pool)
 
-ckpt = tf.train.latest_checkpoint(".")
+ckpt = tf.train.latest_checkpoint(model_path)
 if ckpt:
     saver.restore(sess, ckpt)
     print("Model loaded from file: %s" % ckpt)
@@ -80,13 +85,13 @@ for i in range(iterations):
 
     if i % 100 == 0:
         # Save the variables to disk
-        save_path = saver.save(sess, "./" + ckpt_file)
+        save_path = saver.save(sess, model_path + ckpt_file)
         print("Model saved in file: %s" % save_path)
 
     # Train step
     train_step.run(feed_dict={x: batch[0], y_true: batch[1]})
 
-save_path = saver.save(sess, "./" + ckpt_file)
+save_path = saver.save(sess, model_path + ckpt_file)
 print("Model saved in file: %s" % save_path)
 
 # Get data reader

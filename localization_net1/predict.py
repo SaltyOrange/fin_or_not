@@ -12,11 +12,11 @@ class Predictor:
 
     def get_session(self, model_dir):
         sess = tf.InteractiveSession()
-        saver = tf.train.import_meta_graph(model_dir + "model.ckpt.meta")
+        saver = tf.train.import_meta_graph(model_dir + "ckpt.meta")
         # print(saver.last_checkpoints)
 
         # ckpt = tf.train.latest_checkpoint(model_dir)
-        ckpt = model_dir + "model.ckpt"
+        ckpt = model_dir + "ckpt"
         if ckpt:
             saver.restore(sess, ckpt)
             print("Model loaded from file: %s" % ckpt)
