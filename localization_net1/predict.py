@@ -12,6 +12,7 @@ class Predictor:
 
     def close_session(self):
         self.session.close()
+        tf.reset_default_graph()
 
     def get_session(self, model_dir):
         sess = tf.Session()

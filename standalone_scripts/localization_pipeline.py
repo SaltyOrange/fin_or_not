@@ -54,8 +54,11 @@ for box in bounding_boxes:
     prediction = predictor.predict(
         Image.fromarray(original_image[y-1:y+h-1, x-1:x+h-1, :]))
 
-    # If it really is a fin draw a rectange
+    # If it really is a fin draw a rectangle
     if prediction == [0]:
+        cv2.rectangle(original_image, (x, y), (x + w, y + h),
+                      (0, 0, 255), 0)
+    else:
         cv2.rectangle(original_image, (x, y), (x + w, y + h),
                       (128, 128, 128), 0)
 
