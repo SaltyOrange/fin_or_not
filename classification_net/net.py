@@ -148,4 +148,7 @@ def inference():
         # Training step optimizer
         train_step = tf.train.AdamOptimizer(0.001).minimize(cross_entropy)
 
-    return x, y_, y, train_step, accuracy
+    # Add ops to save and restore all the variables
+    saver = tf.train.Saver()
+
+    return x, y_, y, train_step, accuracy, saver

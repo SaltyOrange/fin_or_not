@@ -15,8 +15,8 @@ class Predictor:
         saver = tf.train.import_meta_graph(model_dir + "ckpt.meta")
         # print(saver.last_checkpoints)
 
-        # ckpt = tf.train.latest_checkpoint(model_dir)
-        ckpt = model_dir + "ckpt"
+        ckpt = tf.train.latest_checkpoint(model_dir)
+        # ckpt = model_dir + "ckpt"
         if ckpt:
             saver.restore(sess, ckpt)
             print("Model loaded from file: %s" % ckpt)

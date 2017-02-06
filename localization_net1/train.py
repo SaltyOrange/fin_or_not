@@ -19,7 +19,8 @@ logfile = sys.argv[6]
 
 ckpt_file = "ckpt"
 
-x, y_true, y, gap_w, conv3_pool, train_step, accuracy = inference(batch_size)
+x, y_true, y, gap_w, conv3_pool, train_step, accuracy, saver = \
+    inference(batch_size)
 
 sess = tf.InteractiveSession()
 
@@ -30,9 +31,6 @@ writer = tf.summary.FileWriter(logfile, sess.graph)
 # Get data reader
 data_reader = DataReader(train_dataset_dir, batch_size=batch_size,
                          file_names=False)
-
-# Add ops to save and restore all the variables
-saver = tf.train.Saver()
 
 tf.add_to_collection('x', x)
 tf.add_to_collection('y', y)
