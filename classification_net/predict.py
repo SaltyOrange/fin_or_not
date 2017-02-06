@@ -51,4 +51,4 @@ class Predictor:
             feed_dict={self.x: image_array}
         )
 
-        return tf.argmax(prediction, 1).eval()
+        return tf.argmax(prediction, 1).eval(session=self.session)

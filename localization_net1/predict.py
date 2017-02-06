@@ -68,10 +68,11 @@ class Predictor:
             [self.y, self.conv3, self.w],
             feed_dict={self.x: image_array}
         )
-        prediction = tf.argmax(prediction, 1).eval()
+        prediction = tf.argmax(prediction, 1).eval(session=self.session)
 
         classmap_image = Image.fromarray(
-            self.get_classmap(0, conv3_array, w_array).eval())
+            self.get_classmap(0, conv3_array, w_array).eval(
+                session=self.session))
 
         return_list = []
 
