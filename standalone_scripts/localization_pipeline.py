@@ -23,6 +23,11 @@ image_path = sys.argv[3]
 prediction, images = \
     predictor.predict(image_path, return_type=1)
 
+predictor.close_session()
+
+# Get classification predictor
+predictor = ClassificationPredictor(sys.argv[2])
+
 classmap = images[0].convert("L")
 classmap = numpy.array(classmap)
 
@@ -44,10 +49,6 @@ for box in bounding_boxes:
     w *= width_ratio
     y *= height_ratio
     h *= height_ratio
-
-    # Get classification predictor
-    predictor.close_session()
-    predictor = ClassificationPredictor(sys.argv[2])
 
     # Check if really a fin using CNN
     prediction = predictor.predict(
