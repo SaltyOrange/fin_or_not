@@ -54,7 +54,8 @@ class DataReader:
     # 0 -> no fin, 1 -> fin
     CLASSES = {0: [0, 1], 1: [1, 0]}
 
-    def __init__(self, data_dir, batch_size=1, file_names=False):
+    def __init__(self, data_dir, batch_size=1, file_names=False,
+                 resize_to=None):
         self.data_arrays = []
         self.current = 0
         self.batch_size = batch_size
@@ -62,6 +63,8 @@ class DataReader:
 
         for item in os.listdir(data_dir):
             image = Image.open(data_dir + item)
+            if resize_to:
+                image = image.resize(resize_to, image.ANTIALIAS)
             image_array = np.asarray(image)
 
             if len(image_array.shape) == 2:
