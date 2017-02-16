@@ -54,9 +54,9 @@ for i, image_path in enumerate(glob.glob(os.path.join(image_dir, '*.jpg'))):
 
             # Bounding box expansion
             x = max(0, int(x - x*BOUNDING_BOX_EXPAND_PERC/2))
-	    y = max(0, int(y - y*BOUNDING_BOX_EXPAND_PERC/2))
+            y = max(0, int(y - y*BOUNDING_BOX_EXPAND_PERC/2))
             w = min(original_image_width, int(w + w*BOUNDING_BOX_EXPAND_PERC/2))
-	    h = min(original_image_height, int(h + h*BOUNDING_BOX_EXPAND_PERC/2))
+            h = min(original_image_height, int(h + h*BOUNDING_BOX_EXPAND_PERC/2))
 
             image = Image.fromarray(original_image[y:y+h, x:x+h, :])
 
