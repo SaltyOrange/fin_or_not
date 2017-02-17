@@ -8,9 +8,9 @@ import glob
 
 def usage():
     print 'USAGE:'
-    print '    script.py input_directory {skip|overwrite}'
+    print '    script.py input_directory output_directory {skip|overwrite}'
     print ''
-    print '    For each jpg file in input_directory you can label a rectangle. 
+    print '    For each jpg file in input_directory you can label a rectangle. '
     print '    When you press enter the rectangle is saved next to the file with .rects extension'
     print '    You can clear drawn rectangles by pressing "c"'
     print '    You can overwrite existing rectangle files or skip images with existing .rects file, depending on passed parameter'
@@ -18,9 +18,10 @@ def usage():
 
 try:
     input_directory = sys.argv[1]
-    if sys.argv[2] == 'skip':
+    output_directory = sys.argv[2]
+    if sys.argv[3] == 'skip':
         skip_existing_files = True
-    elif sys.argv[2] == 'overwrite':
+    elif sys.argv[3] == 'overwrite':
         skip_existing_files = False
     else:
         usage()
@@ -58,8 +59,8 @@ def onkeypress(event):
         rect_strings = [' '.join(rect) + '\n' for rect in rects]
 
         if len(image_rects) > 0:
-            print 'Writing %d rects to %s' % (len(image_rects), image_rect_file)    
-            with open(image_rect_file, 'w') as outfile:
+            print 'Writing %d rects to %s' % (len(image_rects), rects_file_path)
+            with open(rects_file_path, 'w') as outfile:
                 outfile.writelines(rect_strings)
         
         plt.close()
@@ -70,12 +71,19 @@ def onkeypress(event):
         image_plot.figure.canvas.draw()
     
 
-for image_path in glob.glob(os.path.join(input_directory, '*.jpg')):
+#for image_path in glob.glob(os.path.join(input_directory, '*.jpg')):
+for image_path in glob.glob('/home/dupin/dataset/weakly_color/validate/fin0120.jpg')):
     print 'Opening', image_path
     image_rects = []
-    image_rect_file = image_path[:-3] + 'rects'
+    image_name = os.path.basename(image_path)
+
+    if 'no_fin' in image_name:
+        continue # skip this image
+
+    rects_file_name = image_name[:-3] + 'rects'
+    rects_file_path = os.path.join(output_directory, rects_file_name)
     
-    if os.path.isfile(image_rect_file) and skip_existing_files:
+    if os.path.isfile(rects_file_path) and skip_existing_files:
         continue # skip this image
     
     image = mpimg.imread(image_path)

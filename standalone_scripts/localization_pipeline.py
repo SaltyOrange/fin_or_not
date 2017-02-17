@@ -63,6 +63,7 @@ for box in bounding_boxes:
                       (128, 128, 128), 0)
 
 # Show image
+cv2.imwrite("/home/dupin/test.jpg", original_image)
 cv2.imshow("Image with bounding boxes", original_image)
 cv2.waitKey()
 cv2.destroyAllWindows()
